@@ -88,13 +88,18 @@ class GameServer(object):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Bind the socket to the port
-        hostname = socket.gethostname()
-        host_ip = socket.gethostbyname(hostname)
+        host_ip = self.get_ip_address()
         print("Starting game server at {}:{}".format(host_ip, PORT))
         self.socket.bind((host_ip, PORT))
 
         # Listen for incoming connections
         self.socket.listen()
+
+    @staticmethod
+    def get_ip_address():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
 
     def run(self):
         while True:
