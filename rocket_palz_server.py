@@ -89,8 +89,9 @@ class GameServer(object):
 
         # Bind the socket to the port
         hostname = socket.gethostname()
-        print("Starting game server at {}:{}".format(hostname, PORT))
-        self.socket.bind(('localhost', PORT))
+        host_ip = socket.gethostbyname(hostname)
+        print("Starting game server at {}:{}".format(host_ip, PORT))
+        self.socket.bind((host_ip, PORT))
 
         # Listen for incoming connections
         self.socket.listen()
