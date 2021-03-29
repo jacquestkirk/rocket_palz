@@ -1,3 +1,4 @@
+"""Client for Rocket Pals game."""
 import copy
 import queue
 import json
@@ -10,29 +11,37 @@ from PyQt5.QtCore import QTimer
 
 import common
 
-DEBUG = True
-SERVER_LOCATION = "Summer-PC:10018"
-POLLING_PERIOD = 10  # mili-seconds
+POLLING_PERIOD = 10  # mili-seconds, poll the server at this rate
 
 
-class GameClientLoop(object):
+class GameClient(object):
+    """Class to manage the game client."""
     def __init__(self,
                  server_location: str,
                  player: common.PlayerEnum,
                  command_queue: queue.Queue):
+        """
+        Args:
+            server_location (str): server ip address and port. e.g. localhost:10018
+            player (common.PlayerEnum): the player that this client is playing as.
+            command_queue (queue.Queue): Command queue. Contains common.Messages. Commands to be sent to the server are
+                                            put on this queue.
+        """
 
         self.player = player
         self.command_queue = command_queue
 
+        # create socket
         hostname, port = server_location.split(':')
-        # Create a TCP/IP socket
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print('connecting to {}:{}'.format(hostname, port))
         self.client_socket.connect((hostname, int(port)))
         self.player_locations = {}
 
     def poll(self):
+        """Poll the server. Send it your command and get a dictionary of player locations back."""
         if self.command_queue.empty():
+            # If there are no commands in the queue send a none message to just get player locations back.
             next_command = common.Messages.none
         else:
             next_command = self.command_queue.get()
@@ -51,6 +60,7 @@ class GameClientLoop(object):
         self.player_locations = json.loads(locations_str)
 
     def cleanup(self):
+        """Close socket"""
         print('closing socket')
         self.client_socket.close()
 
@@ -59,6 +69,7 @@ class GameClientLoop(object):
 
 
 class ServerSelector(QWidget):
+    """Window that allows you to select a server and player."""
     def __init__(self):
         super().__init__()
 
@@ -92,6 +103,7 @@ class ServerSelector(QWidget):
         self.show()
 
     def start_the_game_already(self):
+        """Callback function for go_button."""
         self.hide()
         print(self.server_input.text())
         print(str(self.player_combo.currentText()))
@@ -101,6 +113,7 @@ class ServerSelector(QWidget):
 
 
 class MainWindow(QWidget):
+    """The main game window."""
     def __init__(self):
         super().__init__()
         self.resize(750, 750)
@@ -115,7 +128,15 @@ class MainWindow(QWidget):
         self.timer = None
 
     def connect(self, server_address, player):
-        self.game_client = GameClientLoop(
+        """
+        Connect to the game server. Spin up a QTimer that repeatedly sends commands and queries the server for player
+        locations.
+        Args:
+            server_address (str): server ip address and port. e.g. localhost:10018
+            player (str): the player that this client is playing as. Should correspond to common.PlayerEnum
+
+        """
+        self.game_client = GameClient(
             server_address,
             common.PlayerEnum(player),
             self.command_queue
@@ -126,10 +147,18 @@ class MainWindow(QWidget):
         self.timer.start()
 
     def poll_server(self):
+        """
+        Get player locations from the server. Move players on the screen to match.
+        """
         self.game_client.poll()
         self.update_display()
 
     def initialize_player(self, player: common.PlayerEnum):
+        """
+        Create an image for the given player. Hide it for now.
+        Args:
+            player (common.PlayerEnum): player to intialize
+        """
         print(player)
         if player in common.images.keys():
             print(common.images[player])
@@ -140,10 +169,17 @@ class MainWindow(QWidget):
             self.players[player.value] = player_image
 
     def load_players(self):
+        """
+        Create an image for all possible players.
+        """
         for player in common.PlayerEnum:
             self.initialize_player(player)
 
     def update_display(self):
+        """
+        Move players around the screen with location information from the server. If the server doesn't have information
+        on the player, they levt the game, so hide them.
+        """
         player_locations = copy.deepcopy(self.game_client.player_locations)
         for player_name, player_image in self.players.items():
             if player_name in player_locations.keys():
@@ -155,6 +191,12 @@ class MainWindow(QWidget):
                 player_image.hide()
 
     def keyPressEvent(self, event):
+        """
+        Executes when a key is pressed.
+        Add a command to the command queue based on which key is pressed.
+        Args:
+            event: The key that was pressed.
+        """
         if event.key() == Qt.Key_Up:
             self.command_queue.put(common.Messages.up)
         elif event.key() == Qt.Key_Down:

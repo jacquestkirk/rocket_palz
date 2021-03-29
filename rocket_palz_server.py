@@ -1,17 +1,26 @@
+"""Spin up a server for Rocket Palz game."""
+
 import json
 import socket
 import threading
 import common
 
-PORT = 10018
-UPDATE_TIME_SEC = 1  # seconds
+PORT = 10018  # Spin up the server on this port.
 
 
 class PlayerLocations(object):
+    """Manages player locations on the map."""
     def __init__(self):
         self.player_locations = {}  # key =player name, value = x and y coordinates of player
 
     def update_locaton(self, player, command):
+        """
+        Update a player's location based on a command received from the client.
+
+        Args:
+            player (str): the player that you want to update the location of. Should correspond to common.PlayerEnum
+            command (str): the command received from the client. Should correspond to common.Messages
+        """
         # add new player if it doesn't exist
         if player not in self.player_locations.keys():
             self.player_locations[player] = {
@@ -30,19 +39,39 @@ class PlayerLocations(object):
             self.player_locations[player]['x'] += 1
 
     def remove_player(self, player):
+        """
+        Remove player from the map
+        Args:
+            player (str): the player that you want to remove. Should correspond to common.PlayerEnum
+        """
         del self.player_locations[player]
 
     def json(self):
+        """
+        Represent the dictionary of player locations as a json string.
+
+        Returns: (str) self.player_location as a json string
+        """
         return json.dumps(self.player_locations)
 
 
 class ClientManagementThread(threading.Thread):
+    """
+    Thread for managing communication with a client.
+    """
     def __init__(
             self,
             connection,
             client_address,
             player_locations
     ):
+        """
+        Initialize the client management thread.
+        Args:
+            connection (socket.socket): connection used to send and receive data.
+            client_address (str): server ip address and port. e.g. localhost:10018
+            player_locations (PlayerLocations): Player location management object.
+        """
         super().__init__()
         self.connection = connection
         self.client_address = client_address
@@ -50,6 +79,8 @@ class ClientManagementThread(threading.Thread):
         self.player_locations = player_locations
 
     def run(self):
+        """Run the thread. While the connection is active, receive messages from the client and update the map of
+        player locations"""
         try:
             print('{} connected'.format(self.client_address))
             # print received data
@@ -79,6 +110,7 @@ class ClientManagementThread(threading.Thread):
 
 
 class GameServer(object):
+    """Manages the game server"""
     def __init__(self):
         self.player_locations = PlayerLocations()
 
@@ -97,11 +129,14 @@ class GameServer(object):
 
     @staticmethod
     def get_ip_address():
+        """Get external facing ip address."""
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         return s.getsockname()[0]
 
     def run(self):
+        """Loop that runs the game server. Spins up a client management thread for all clients that conenct to the
+        server. """
         while True:
             # Wait for a connection
             print("waiting for connections")
