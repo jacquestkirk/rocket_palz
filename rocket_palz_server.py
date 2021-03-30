@@ -12,6 +12,7 @@ class PlayerLocations(object):
     """Manages player locations on the map."""
     def __init__(self):
         self.player_locations = {}  # key =player name, value = x and y coordinates of player
+        self.lock = threading.Lock()
 
     def update_locaton(self, player, command):
         """
@@ -21,22 +22,23 @@ class PlayerLocations(object):
             player (str): the player that you want to update the location of. Should correspond to common.PlayerEnum
             command (str): the command received from the client. Should correspond to common.Messages
         """
-        # add new player if it doesn't exist
-        if player not in self.player_locations.keys():
-            self.player_locations[player] = {
-                'x': 0,
-                'y': 0
-            }
+        with self.lock:
+            # add new player if it doesn't exist
+            if player not in self.player_locations.keys():
+                self.player_locations[player] = {
+                    'x': 0,
+                    'y': 0
+                }
 
-        # interpret commands
-        if command == common.Messages.up.value:
-            self.player_locations[player]['y'] -= 1
-        elif command == common.Messages.down.value:
-            self.player_locations[player]['y'] += 1
-        elif command == common.Messages.left.value:
-            self.player_locations[player]['x'] -= 1
-        elif command == common.Messages.right.value:
-            self.player_locations[player]['x'] += 1
+            # interpret commands
+            if command == common.Messages.up.value:
+                self.player_locations[player]['y'] -= 1
+            elif command == common.Messages.down.value:
+                self.player_locations[player]['y'] += 1
+            elif command == common.Messages.left.value:
+                self.player_locations[player]['x'] -= 1
+            elif command == common.Messages.right.value:
+                self.player_locations[player]['x'] += 1
 
     def remove_player(self, player):
         """
@@ -44,7 +46,8 @@ class PlayerLocations(object):
         Args:
             player (str): the player that you want to remove. Should correspond to common.PlayerEnum
         """
-        del self.player_locations[player]
+        with self.lock:
+            del self.player_locations[player]
 
     def json(self):
         """
